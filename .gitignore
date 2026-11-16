@@ -1,0 +1,16 @@
+# Lingkungan Python dan editor (dibuat ulang lewat requirements.txt)
+.venv/
+.vscode/
+__pycache__/
+
+# Data mentah dan hasil cleaning: terlalu besar untuk GitHub, dibuat ulang lewat python/clean_olist.py
+archive/
+archive.zip
+clean/
+
+# Catatan belajar pribadi (hapus baris ini jika ingin ikut di-upload)
+BELAJAR_Cleaning_dan_SQL.md
+
+# Cache lokal Power BI
+**/.pbi/cache.abf
+**/.pbi/localSettings.json

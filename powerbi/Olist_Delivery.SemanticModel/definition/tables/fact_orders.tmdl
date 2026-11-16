@@ -1,0 +1,309 @@
+/// Satu baris per order (Jan 2017 - Agu 2018). Sumber: view dbo.vw_fact_orders.
+table fact_orders
+	lineageTag: 515be4d7-b4c7-4df5-85ec-932ceb57d1b9
+
+	/// Jumlah order (semua status).
+	measure Orders = COUNTROWS ( fact_orders )
+		formatString: #,0
+		displayFolder: Delivery
+		lineageTag: cc4764c1-4606-4320-887a-917de8a605b6
+
+	/// Order yang benar-benar diterima pelanggan.
+	measure 'Delivered Orders' = CALCULATE ( [Orders], fact_orders[is_delivered] = TRUE () )
+		formatString: #,0
+		displayFolder: Delivery
+		lineageTag: 17b07cf4-bfe7-4276-9e7f-6866a705c141
+
+	/// Order terkirim yang tiba setelah tanggal estimasi.
+	measure 'Late Orders' = CALCULATE ( [Orders], fact_orders[is_delivered] = TRUE (), fact_orders[is_late] = TRUE () )
+		formatString: #,0
+		displayFolder: Delivery
+		lineageTag: a22ad19a-c449-424b-99c4-ba44b278c5c6
+
+	/// Persentase order terkirim yang terlambat.
+	measure 'Late Rate %' = DIVIDE ( [Late Orders], [Delivered Orders] )
+		formatString: 0.0%
+		displayFolder: Delivery
+		lineageTag: 3d92de36-449a-475b-b0c7-faad683ecccf
+
+	/// Persentase order terkirim yang tepat waktu atau lebih cepat.
+	measure 'On-Time Rate %' = IF ( NOT ISBLANK ( [Delivered Orders] ), 1 - [Late Rate %] )
+		formatString: 0.0%
+		displayFolder: Delivery
+		lineageTag: 19b06e94-72de-4ce1-bca5-31fd24dca1db
+
+	/// Rata-rata hari dari beli sampai diterima (tanpa timestamp janggal).
+	measure 'Avg Delivery Days' = CALCULATE ( AVERAGE ( fact_orders[total_delivery_days] ), fact_orders[is_delivered] = TRUE (), fact_orders[has_date_anomaly] = FALSE () )
+		formatString: 0.0
+		displayFolder: Delivery
+		lineageTag: ff9722f7-aa81-47e3-8048-3c5114506a0e
+
+	/// Rata-rata janji waktu kirim saat checkout.
+	measure 'Avg Estimated Days' = CALCULATE ( AVERAGE ( fact_orders[estimated_days] ), fact_orders[is_delivered] = TRUE (), fact_orders[has_date_anomaly] = FALSE () )
+		formatString: 0.0
+		displayFolder: Delivery
+		lineageTag: 114a9ab0-b5cb-4b9f-8aa3-5e70d21fbfa7
+
+	/// Tahap seller: beli sampai diserahkan ke kurir.
+	measure 'Avg Seller Days' = CALCULATE ( AVERAGE ( fact_orders[seller_handling_days] ), fact_orders[is_delivered] = TRUE (), fact_orders[has_date_anomaly] = FALSE () )
+		formatString: 0.0
+		displayFolder: Delivery
+		lineageTag: 8374a928-a4f5-4af6-984d-a16023c429f1
+
+	/// Tahap kurir: diserahkan ke kurir sampai diterima pelanggan.
+	measure 'Avg Carrier Days' = CALCULATE ( AVERAGE ( fact_orders[carrier_transit_days] ), fact_orders[is_delivered] = TRUE (), fact_orders[has_date_anomaly] = FALSE () )
+		formatString: 0.0
+		displayFolder: Delivery
+		lineageTag: 438b0197-5305-4221-b8e2-4ec6cc5ce698
+
+	/// Selisih rata-rata janji vs kenyataan (positif = tiba lebih cepat).
+	measure 'Days Saved vs Estimate' = [Avg Estimated Days] - [Avg Delivery Days]
+		formatString: 0.0
+		displayFolder: Delivery
+		lineageTag: fdd092a3-8701-485d-9649-bc10f0871400
+
+	/// Porsi order per kelompok keterlambatan.
+	measure 'Orders Share %' = DIVIDE ( [Delivered Orders], CALCULATE ( [Delivered Orders], REMOVEFILTERS ( fact_orders[Delay Bucket], fact_orders[Delay Bucket Order] ) ) )
+		formatString: 0.0%
+		displayFolder: Delivery
+		lineageTag: de0e8daf-2fd6-423f-b57b-43f5efe41482
+
+	/// Rata-rata rating ulasan (1-5).
+	measure 'Avg Review Score' = AVERAGE ( fact_orders[review_score] )
+		formatString: 0.00
+		displayFolder: Experience
+		lineageTag: e200efc5-692b-4bc7-88e0-a8b9e9676846
+
+	/// Porsi ulasan bintang 1-2. NOT ISBLANK wajib: di DAX, BLANK <= 2 bernilai TRUE, sehingga order tanpa ulasan ikut terhitung.
+	measure 'Low Review %' =
+			VAR Reviewed = CALCULATE ( COUNTROWS ( fact_orders ), NOT ISBLANK ( fact_orders[review_score] ) )
+			VAR Low = CALCULATE ( COUNTROWS ( fact_orders ), NOT ISBLANK ( fact_orders[review_score] ), fact_orders[review_score] <= 2 )
+			RETURN DIVIDE ( Low, Reviewed )
+		formatString: 0.0%
+		displayFolder: Experience
+		lineageTag: b08f2b03-6a99-4c81-acf7-13744333e0c7
+
+	/// Rata-rata ongkos kirim per order.
+	measure 'Avg Freight per Order' = AVERAGE ( fact_orders[freight_value] )
+		formatString: #,0.00
+		displayFolder: Freight
+		lineageTag: 297343b9-65ab-4317-88c3-89f22699cd6c
+
+	/// Delivered Orders sebagai teks berformat ribuan untuk card.
+	measure 'Delivered Orders Display' = FORMAT ( [Delivered Orders], "#,0" )
+		displayFolder: Display
+		lineageTag: f512c3a4-b859-44eb-bf68-b0998d04772e
+
+	/// Rating rata-rata untuk order yang sudah diterima.
+	measure 'Avg Review (Delivered)' = CALCULATE ( [Avg Review Score], fact_orders[is_delivered] = TRUE () )
+		formatString: 0.00
+		displayFolder: Experience
+		lineageTag: 7b4a7615-4726-4460-9f64-9a8d59c4ebb6
+
+	column order_id
+		dataType: string
+		lineageTag: 974ea17f-257f-4f72-a865-a7a97fbb74ce
+		sourceColumn: order_id
+
+	column customer_id
+		dataType: string
+		lineageTag: c330eada-5a8d-476d-958d-a00319a921d3
+		sourceColumn: customer_id
+
+	column order_status
+		dataType: string
+		lineageTag: 2a7a5971-7bbd-4f2b-8b12-1fbbafb5c447
+		sourceColumn: order_status
+
+	column purchase_date
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		lineageTag: 248a71d6-cd45-4321-b7c2-43a4c8de17aa
+		summarizeBy: none
+		sourceColumn: purchase_date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_purchase_timestamp
+		dataType: dateTime
+		lineageTag: 02268a7c-944c-4d1d-a9c1-46ed9508c878
+		sourceColumn: order_purchase_timestamp
+
+	column order_delivered_customer_date
+		dataType: dateTime
+		lineageTag: 2e5b0958-951d-4620-b147-c76107fa5dfa
+		sourceColumn: order_delivered_customer_date
+
+	column order_estimated_delivery_date
+		dataType: dateTime
+		lineageTag: 33a5e044-8182-41c3-9130-f4ed28c8faa7
+		sourceColumn: order_estimated_delivery_date
+
+	column approval_hours
+		dataType: double
+		lineageTag: 4d1de551-f85d-4a73-a139-eda3f2a70104
+		summarizeBy: none
+		sourceColumn: approval_hours
+
+	column seller_handling_days
+		dataType: double
+		lineageTag: 31872952-3617-44c3-b6c1-3eb79c10fd43
+		summarizeBy: none
+		sourceColumn: seller_handling_days
+
+	column carrier_transit_days
+		dataType: double
+		lineageTag: 332c6283-e976-4a8d-8934-172f5559e020
+		summarizeBy: none
+		sourceColumn: carrier_transit_days
+
+	column total_delivery_days
+		dataType: double
+		lineageTag: 7d1a33c3-390a-42a1-8f18-d273bdc0189b
+		summarizeBy: none
+		sourceColumn: total_delivery_days
+
+	column estimated_days
+		dataType: double
+		lineageTag: 51bcc69e-d6f7-4ef1-b3a4-aa4c44cebd5d
+		summarizeBy: none
+		sourceColumn: estimated_days
+
+	column delay_days
+		dataType: int64
+		lineageTag: 397b18cc-5c48-4764-b81f-f855db1e17a8
+		summarizeBy: none
+		sourceColumn: delay_days
+
+	column is_late
+		dataType: boolean
+		lineageTag: a824789a-3e6c-4b89-973d-577df243eccd
+		sourceColumn: is_late
+
+	column is_delivered
+		dataType: boolean
+		lineageTag: aedc0235-2ced-4ce1-9558-db04b26ec1f3
+		sourceColumn: is_delivered
+
+	column in_analysis_window
+		dataType: boolean
+		isHidden
+		lineageTag: e31773ff-1cdc-4af2-b4d8-732c6e60566b
+		sourceColumn: in_analysis_window
+
+	column has_date_anomaly
+		dataType: boolean
+		lineageTag: 616ad1ac-78cd-4cce-82ca-9bc5c7155289
+		sourceColumn: has_date_anomaly
+
+	column item_count
+		dataType: int64
+		lineageTag: fe5c618c-29e4-4ac9-9f3c-464027bdc165
+		summarizeBy: none
+		sourceColumn: item_count
+
+	column seller_count
+		dataType: int64
+		lineageTag: 3f28646c-a53d-416a-9ceb-6e6b2e5c632c
+		summarizeBy: none
+		sourceColumn: seller_count
+
+	column items_value
+		dataType: double
+		lineageTag: 85a545da-debe-44d2-8159-df60e237dbc9
+		summarizeBy: none
+		sourceColumn: items_value
+
+	column freight_value
+		dataType: double
+		lineageTag: 95fab373-9656-4691-9a33-94e5d4b59f39
+		summarizeBy: none
+		sourceColumn: freight_value
+
+	column max_distance_km
+		dataType: double
+		lineageTag: 283ba888-7b21-4b21-82ae-f53a3743a178
+		summarizeBy: none
+		sourceColumn: max_distance_km
+
+	column payment_value
+		dataType: double
+		lineageTag: a12962a3-a9de-4d4c-a10d-26ec9c6be7c4
+		summarizeBy: none
+		sourceColumn: payment_value
+
+	column max_installments
+		dataType: int64
+		lineageTag: 10a82a75-2fab-495c-af93-a5a6f666c303
+		summarizeBy: none
+		sourceColumn: max_installments
+
+	column review_score
+		dataType: int64
+		lineageTag: 727d850a-18e1-46e5-b8f3-feb6d614f9c6
+		summarizeBy: none
+		sourceColumn: review_score
+
+	column has_comment
+		dataType: boolean
+		lineageTag: 574b9e41-146d-4e93-a123-47e54c96a74d
+		sourceColumn: has_comment
+
+	/// On time / Late untuk order terkirim; Not delivered untuk sisanya.
+	column 'Delivery Status' = IF ( fact_orders[is_delivered], IF ( fact_orders[is_late], "Late", "On time" ), "Not delivered" )
+		dataType: string
+		lineageTag: 2acf7dac-b555-4d19-93e9-ad13a6e82f8b
+
+	column 'Delay Bucket Order' =
+			VAR d = fact_orders[delay_days]
+			RETURN SWITCH ( TRUE (), ISBLANK ( d ), BLANK (), d <= -15, 1, d <= -8, 2, d <= -1, 3, d = 0, 4, d <= 3, 5, d <= 7, 6, 7 )
+		dataType: int64
+		isHidden
+		lineageTag: c141f9d0-db09-4455-8b3b-9a26b0cb2e2b
+
+	/// Selisih tanggal terima vs estimasi, dikelompokkan.
+	column 'Delay Bucket' = SWITCH ( fact_orders[Delay Bucket Order], 1, ">=15d early", 2, "8-14d early", 3, "1-7d early", 4, "On the day", 5, "1-3d late", 6, "4-7d late", 7, ">7d late" )
+		dataType: string
+		lineageTag: 2b6a3dcb-16d4-4388-974b-b7bc5e976f97
+		sortByColumn: 'Delay Bucket Order'
+
+	column 'Distance Band Order' =
+			VAR k = fact_orders[max_distance_km]
+			RETURN SWITCH ( TRUE (), ISBLANK ( k ), BLANK (), k < 100, 1, k < 500, 2, k < 1000, 3, k < 2000, 4, 5 )
+		dataType: int64
+		isHidden
+		lineageTag: f5323dab-a6f6-4d0c-af1d-7be8f3afb9a0
+
+	/// Jarak seller terjauh ke pelanggan.
+	column 'Distance Band' = SWITCH ( fact_orders[Distance Band Order], 1, "<100 km", 2, "100-500 km", 3, "500-1000 km", 4, "1000-2000 km", 5, ">=2000 km" )
+		dataType: string
+		lineageTag: fe521b0f-b96c-41ce-a186-345ec117465b
+		sortByColumn: 'Distance Band Order'
+
+	column 'Arrival Order' =
+			VAR d = fact_orders[delay_days]
+			RETURN IF ( fact_orders[is_delivered], SWITCH ( TRUE (), d < 0, 1, d = 0, 2, 3 ) )
+		dataType: int64
+		isHidden
+		lineageTag: d3b50c65-f328-4f80-838a-950711612a78
+
+	/// Early / On the estimated day / Late (order terkirim saja).
+	column Arrival = SWITCH ( fact_orders[Arrival Order], 1, "Early", 2, "On the estimated day", 3, "Late" )
+		dataType: string
+		lineageTag: 56fe42d0-c908-4c72-8d42-4e0188594195
+		sortByColumn: 'Arrival Order'
+
+	partition fact_orders = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(".\SQLEXPRESS", "OlistDB"),
+				    Data = Source{[Schema = "dbo", Item = "vw_fact_orders"]}[Data],
+				    InWindow = Table.SelectRows(Data, each [in_analysis_window] = true)
+				in
+				    InWindow
+
+	annotation PBI_ResultType = Exception
+

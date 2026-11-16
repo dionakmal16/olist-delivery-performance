@@ -1,0 +1,3 @@
+# Versi ini sengaja dikunci: build yang lebih baru diblokir Smart App Control di laptop pengembang.
+pandas==2.2.3
+numpy==2.1.3

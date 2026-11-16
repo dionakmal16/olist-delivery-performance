@@ -1,0 +1,20 @@
+relationship fact_orders_customer_id_dim_customer_customer_id
+	fromColumn: fact_orders.customer_id
+	toColumn: dim_customer.customer_id
+
+relationship fact_order_items_order_id_fact_orders_order_id
+	fromColumn: fact_order_items.order_id
+	toColumn: fact_orders.order_id
+
+relationship fact_order_items_seller_id_dim_seller_seller_id
+	fromColumn: fact_order_items.seller_id
+	toColumn: dim_seller.seller_id
+
+relationship fact_order_items_product_id_dim_product_product_id
+	fromColumn: fact_order_items.product_id
+	toColumn: dim_product.product_id
+
+relationship fact_orders_purchase_date_Calendar_Date
+	fromColumn: fact_orders.purchase_date
+	toColumn: Calendar.Date
+

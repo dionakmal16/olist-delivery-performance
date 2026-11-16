@@ -1,0 +1,60 @@
+/// Pelanggan dengan kota, negara bagian, dan wilayah.
+table dim_customer
+	lineageTag: fa85a1ee-c3eb-4dea-b37d-930d3d424fbd
+
+	column customer_id
+		dataType: string
+		lineageTag: 2464a28d-568c-4c7f-8100-9aa5f60e2b9b
+		sourceColumn: customer_id
+
+	column customer_unique_id
+		dataType: string
+		lineageTag: 35f5f01a-2979-4f76-b743-b4450e322fef
+		sourceColumn: customer_unique_id
+
+	column customer_city
+		dataType: string
+		lineageTag: f6bb4268-ba17-41bc-b3ab-57c74dcd1ca0
+		sourceColumn: customer_city
+
+	column customer_state
+		dataType: string
+		lineageTag: 7f59cef9-252b-45ad-abf3-aa7908ef93e1
+		sourceColumn: customer_state
+
+	column customer_state_name
+		dataType: string
+		lineageTag: ddc985ee-80bd-44df-a83c-563b96affbf2
+		dataCategory: StateOrProvince
+		sourceColumn: customer_state_name
+
+	column customer_region
+		dataType: string
+		lineageTag: 46bc3e64-c1b5-43d8-b840-024d91222225
+		sourceColumn: customer_region
+
+	column customer_lat
+		dataType: double
+		lineageTag: cfd98542-9339-40ea-9bb4-2f83d122b1ad
+		dataCategory: Latitude
+		summarizeBy: none
+		sourceColumn: customer_lat
+
+	column customer_lng
+		dataType: double
+		lineageTag: 57b40428-be5c-493a-ac7d-511ac4c5fd0a
+		dataCategory: Longitude
+		summarizeBy: none
+		sourceColumn: customer_lng
+
+	partition dim_customer = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(".\SQLEXPRESS", "OlistDB"),
+				    Data = Source{[Schema = "dbo", Item = "vw_dim_customer"]}[Data]
+				in
+				    Data
+
+	annotation PBI_ResultType = Exception
+

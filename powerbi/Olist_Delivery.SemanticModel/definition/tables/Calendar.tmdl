@@ -1,0 +1,71 @@
+/// Tabel kalender Jan 2017 - Agu 2018 (periode analisis); ditandai sebagai date table.
+table Calendar
+	lineageTag: 2bcfc9ae-be79-4f57-8840-0c66251098ca
+	dataCategory: Time
+
+	column Date
+		isUnique
+		lineageTag: 61d89e97-6459-4a38-8ae9-24754edaaf4c
+		isNameInferred
+		sourceColumn: [Date]
+
+	column Year
+		lineageTag: 14600b78-160a-4422-92cd-45a4497a5c9e
+		isNameInferred
+		sourceColumn: [Year]
+
+	column Quarter
+		lineageTag: 3a4ac9c9-4741-4837-830f-0e09acd0ed9d
+		isNameInferred
+		sourceColumn: [Quarter]
+
+	column 'Month No'
+		isHidden
+		lineageTag: 159c463c-1443-453c-96d8-0ab6c141e75e
+		isNameInferred
+		sourceColumn: [Month No]
+
+	column Month
+		lineageTag: 6e98efcb-4ab7-4662-96b2-118f96642f8f
+		isNameInferred
+		sourceColumn: [Month]
+		sortByColumn: 'Month No'
+
+	column 'Year Month'
+		lineageTag: 023ecbb1-5474-4561-b715-6c681172bd7b
+		isNameInferred
+		sourceColumn: [Year Month]
+
+	column 'Month Start'
+		formatString: mmm yyyy
+		lineageTag: ab24ee1c-49c1-4b82-8ef4-ad04761423c2
+		isNameInferred
+		sourceColumn: [Month Start]
+
+	column 'Weekday No'
+		isHidden
+		lineageTag: f74af08d-764d-4d4c-9386-cfa3cc72fe06
+		isNameInferred
+		sourceColumn: [Weekday No]
+
+	column Weekday
+		lineageTag: b243eb27-e507-4430-9561-a503d9284f1f
+		isNameInferred
+		sourceColumn: [Weekday]
+		sortByColumn: 'Weekday No'
+
+	partition Calendar = calculated
+		mode: import
+		source =
+				ADDCOLUMNS(
+				    CALENDAR(DATE(2017,1,1), DATE(2018,8,31)),
+				    "Year", YEAR([Date]),
+				    "Quarter", "Q" & QUARTER([Date]),
+				    "Month No", MONTH([Date]),
+				    "Month", FORMAT([Date], "MMM"),
+				    "Year Month", FORMAT([Date], "YYYY-MM"),
+				    "Month Start", DATE(YEAR([Date]), MONTH([Date]), 1),
+				    "Weekday No", WEEKDAY([Date], 2),
+				    "Weekday", FORMAT([Date], "ddd")
+				)
+

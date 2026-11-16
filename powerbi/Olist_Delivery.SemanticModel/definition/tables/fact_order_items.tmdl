@@ -1,0 +1,215 @@
+/// Satu baris per item dalam order (Jan 2017 - Agu 2018). Sumber: view dbo.vw_fact_order_items.
+table fact_order_items
+	lineageTag: 725e9e0c-56ac-4a41-a92a-946e76415280
+
+	/// Gross merchandise value: total harga barang (tanpa ongkir).
+	measure GMV = SUM ( fact_order_items[price] )
+		formatString: #,0
+		displayFolder: Items
+		lineageTag: 87320f44-17e8-4486-aeba-e7e897e3b28d
+
+	measure 'Freight Total' = SUM ( fact_order_items[freight_value] )
+		formatString: #,0
+		displayFolder: Freight
+		lineageTag: 22ecc0f5-8e7e-4ee8-8de4-e62cea565e9b
+
+	/// Ongkir dibanding harga barang.
+	measure 'Freight % of Price' = DIVIDE ( [Freight Total], [GMV] )
+		formatString: 0.0%
+		displayFolder: Freight
+		lineageTag: 0314775f-0137-44d8-952d-a60eac731382
+
+	measure 'Active Sellers' = DISTINCTCOUNT ( fact_order_items[seller_id] )
+		formatString: #,0
+		displayFolder: Sellers
+		lineageTag: 102144fc-34c5-47cf-a56b-6406c60a9dd6
+
+	/// Order terkirim unik (dihitung dari tabel item, jadi satu order tidak terhitung ganda).
+	measure 'Seller Orders' = CALCULATE ( DISTINCTCOUNT ( fact_order_items[order_id] ), fact_order_items[is_delivered] = TRUE () )
+		formatString: #,0
+		displayFolder: Sellers
+		lineageTag: d362d64f-4bb9-4922-9fdb-c8d637743752
+
+	/// Tingkat keterlambatan di level item/seller (order unik).
+	measure 'Seller Late Rate %' = DIVIDE ( CALCULATE ( DISTINCTCOUNT ( fact_order_items[order_id] ), fact_order_items[is_delivered] = TRUE (), fact_order_items[is_late] = TRUE () ), [Seller Orders] )
+		formatString: 0.0%
+		displayFolder: Sellers
+		lineageTag: b3679ea8-781e-4528-8dd8-847b4e5b701b
+
+	/// Rating rata-rata per order (bukan per item).
+	measure 'Seller Avg Review' = AVERAGEX ( VALUES ( fact_order_items[order_id] ), CALCULATE ( MAX ( fact_order_items[review_score] ) ) )
+		formatString: 0.00
+		displayFolder: Sellers
+		lineageTag: b223247c-5622-4283-ac55-3f3715f40824
+
+	/// Rata-rata hari proses seller per order.
+	measure 'Seller Handling Days' = AVERAGEX ( VALUES ( fact_order_items[order_id] ), CALCULATE ( MAX ( fact_order_items[seller_handling_days] ) ) )
+		formatString: 0.0
+		displayFolder: Sellers
+		lineageTag: 046f760d-c138-4a53-83c0-0236b1a70c2e
+
+	/// Porsi order yang minimal satu itemnya terlambat diserahkan ke kurir.
+	measure 'Missed Handover %' = DIVIDE ( CALCULATE ( DISTINCTCOUNT ( fact_order_items[order_id] ), fact_order_items[missed_handover] = TRUE (), fact_order_items[is_delivered] = TRUE () ), [Seller Orders] )
+		formatString: 0.0%
+		displayFolder: Sellers
+		lineageTag: 3b584af5-b4cb-4219-b218-b80d6ab0b3f5
+
+	/// Hanya untuk seller dengan minimal 50 order terkirim, supaya sampel kecil tidak menyesatkan.
+	measure 'Seller Late Rate (50+ orders)' = IF ( [Seller Orders] >= 50, [Seller Late Rate %] )
+		formatString: 0.0%
+		displayFolder: Sellers
+		lineageTag: ddf76c63-7f09-457d-a99c-479210a88da6
+
+	/// Active Sellers sebagai teks berformat ribuan untuk card.
+	measure 'Active Sellers Display' = FORMAT ( [Active Sellers], "#,0" )
+		displayFolder: Display
+		lineageTag: 22ece0b2-6058-47d1-bb2b-50a818eca730
+
+	measure 'Top Seller Orders' = IF ( [Seller Orders] >= 50, [Seller Orders] )
+		formatString: #,0
+		displayFolder: Sellers
+		lineageTag: c488377f-bace-4a71-9852-4ad5be21544c
+
+	measure 'Top Seller Handling Days' = IF ( [Seller Orders] >= 50, [Seller Handling Days] )
+		formatString: 0.0
+		displayFolder: Sellers
+		lineageTag: ce95d530-c260-4537-97f4-8bbfeca0c6ae
+
+	measure 'Top Seller Avg Review' = IF ( [Seller Orders] >= 50, [Seller Avg Review] )
+		formatString: 0.00
+		displayFolder: Sellers
+		lineageTag: 2f44f064-5aed-4765-9cef-32b94ce1568c
+
+	column order_id
+		dataType: string
+		lineageTag: 0fba905b-529d-453b-bfc7-a5e8a0fd0213
+		sourceColumn: order_id
+
+	column order_item_id
+		dataType: int64
+		lineageTag: 8fc8da72-29e2-4337-92f8-709597120b8c
+		summarizeBy: none
+		sourceColumn: order_item_id
+
+	column customer_id
+		dataType: string
+		isHidden
+		lineageTag: d02f9342-0ce9-421b-8209-2e9ce553ae6e
+		sourceColumn: customer_id
+
+		changedProperty = IsHidden
+
+	column seller_id
+		dataType: string
+		lineageTag: a0b8cb4f-f461-405b-b0d1-3250d4f253f6
+		sourceColumn: seller_id
+
+	column product_id
+		dataType: string
+		lineageTag: 37386933-2a79-4bae-aea3-83263be87602
+		sourceColumn: product_id
+
+	column purchase_date
+		dataType: dateTime
+		isHidden
+		formatString: dd mmm yyyy
+		lineageTag: 6582e3ba-6660-4073-ac0d-4eeec3e89ef3
+		summarizeBy: none
+		sourceColumn: purchase_date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+		annotation SummarizationSetBy = Automatic
+
+	column price
+		dataType: double
+		lineageTag: b977008d-e0d7-4ff2-a3cd-e0060f83831b
+		summarizeBy: none
+		sourceColumn: price
+
+	column freight_value
+		dataType: double
+		lineageTag: af5b6b95-efee-4ab1-bcd5-cb6b39482c43
+		summarizeBy: none
+		sourceColumn: freight_value
+
+	column distance_km
+		dataType: double
+		lineageTag: b5c60178-414e-4769-8015-9081d080d933
+		summarizeBy: none
+		sourceColumn: distance_km
+
+	column flag_free_freight
+		dataType: boolean
+		lineageTag: 4f93e18c-74da-40af-af57-640e8a88a230
+		sourceColumn: flag_free_freight
+
+	column missed_handover
+		dataType: boolean
+		lineageTag: bec3b0ec-5e09-47cd-845c-d02108ce3cf2
+		sourceColumn: missed_handover
+
+	column is_same_state
+		dataType: boolean
+		lineageTag: 5a300070-f4af-4a95-9112-1e7388ddce9f
+		sourceColumn: is_same_state
+
+	column seller_handling_days
+		dataType: double
+		lineageTag: d75a7295-8d1b-4265-a29d-de36e108c968
+		summarizeBy: none
+		sourceColumn: seller_handling_days
+
+	column is_late
+		dataType: boolean
+		lineageTag: d2648a99-ec0f-4fb2-889d-25b4e6afce57
+		sourceColumn: is_late
+
+	column is_delivered
+		dataType: boolean
+		lineageTag: 46e95f06-cf88-4d6c-9f98-d4d2442c2cbb
+		sourceColumn: is_delivered
+
+	column in_analysis_window
+		dataType: boolean
+		isHidden
+		lineageTag: 2222ec3d-9c3f-4318-ab07-c25d055e225e
+		sourceColumn: in_analysis_window
+
+	column review_score
+		dataType: int64
+		lineageTag: 375bb099-0fa4-4a07-88e3-7bff2cb0054b
+		summarizeBy: none
+		sourceColumn: review_score
+
+	column 'Price Band Order' =
+			VAR p = fact_order_items[price]
+			RETURN SWITCH ( TRUE (), p < 50, 1, p < 100, 2, p < 200, 3, 4 )
+		dataType: int64
+		isHidden
+		lineageTag: 873a788f-8a95-48a8-9ff9-58e662e2e52c
+
+	column 'Price Band' = SWITCH ( fact_order_items[Price Band Order], 1, "<50", 2, "50-100", 3, "100-200", ">=200" )
+		dataType: string
+		lineageTag: fcac3715-0703-4f5a-945e-5a10841ab819
+		sortByColumn: 'Price Band Order'
+
+	/// Apakah seller menyerahkan barang ke kurir sebelum shipping_limit_date.
+	column 'Handover Status' = SWITCH ( TRUE (), ISBLANK ( fact_order_items[missed_handover] ), "Unknown", fact_order_items[missed_handover], "Missed deadline", "On time" )
+		dataType: string
+		lineageTag: a57bcd6b-35a3-490a-aef3-83d20be7d064
+
+	column Route = IF ( fact_order_items[is_same_state], "Same state", "Different state" )
+		dataType: string
+		lineageTag: 3d18bb80-caab-4da6-9414-d72fbba0f3d9
+
+	partition fact_order_items = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(".\SQLEXPRESS", "OlistDB"),
+				    Data = Source{[Schema = "dbo", Item = "vw_fact_order_items"]}[Data],
+				    InWindow = Table.SelectRows(Data, each [in_analysis_window] = true)
+				in
+				    InWindow
+

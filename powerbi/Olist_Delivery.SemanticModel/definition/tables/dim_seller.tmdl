@@ -1,0 +1,71 @@
+/// Seller dengan kota, negara bagian, dan wilayah.
+table dim_seller
+	lineageTag: 08d78eb7-02e1-4778-9c99-dc5dca6174df
+
+	column seller_id
+		dataType: string
+		lineageTag: 43f1991d-519b-44ae-8f12-ab6bd0a15dbd
+		sourceColumn: seller_id
+
+	column seller_city
+		dataType: string
+		lineageTag: d7dc613b-56b8-46d5-83f1-6890c2b5b4c1
+		sourceColumn: seller_city
+
+	column seller_state
+		dataType: string
+		lineageTag: 5f038f21-e6fe-43bd-b2c2-46277bcdb4f6
+		sourceColumn: seller_state
+
+	column seller_state_name
+		dataType: string
+		lineageTag: 0fdcd2c5-8a88-4488-8fcc-2e0ba3ea866b
+		dataCategory: StateOrProvince
+		sourceColumn: seller_state_name
+
+	column seller_region
+		dataType: string
+		lineageTag: f50e7df1-0135-4f28-9d21-90405e356b05
+		sourceColumn: seller_region
+
+	column seller_lat
+		dataType: double
+		lineageTag: ebea8fcc-5819-450b-92af-d3d4e506bb4f
+		dataCategory: Latitude
+		summarizeBy: none
+		sourceColumn: seller_lat
+
+	column seller_lng
+		dataType: double
+		lineageTag: 03c2c2c3-ff82-4984-b1ba-269ef5b157bf
+		dataCategory: Longitude
+		summarizeBy: none
+		sourceColumn: seller_lng
+
+	/// 8 karakter pertama seller_id, agar muat di tabel.
+	column Seller = LEFT ( dim_seller[seller_id], 8 )
+		dataType: string
+		lineageTag: cfbd61b9-c6d2-43a1-90ab-b2e73f69d7ef
+
+	column 'Speed Band Order' =
+			VAR d = CALCULATE ( [Seller Handling Days] )
+			RETURN SWITCH ( TRUE (), ISBLANK ( d ), BLANK (), d < 2, 1, d < 3, 2, d < 5, 3, 4 )
+		dataType: int64
+		isHidden
+		lineageTag: 1f1a865a-fe47-48fe-9167-1c257c60ce99
+
+	/// Kelompok seller berdasarkan rata-rata hari proses (beli -> serah ke kurir).
+	column 'Speed Band' = SWITCH ( dim_seller[Speed Band Order], 1, "< 2 days", 2, "2-3 days", 3, "3-5 days", 4, "5+ days" )
+		dataType: string
+		lineageTag: e8d7c0d0-2e84-4610-bc92-e967bd9a7b3b
+		sortByColumn: 'Speed Band Order'
+
+	partition dim_seller = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(".\SQLEXPRESS", "OlistDB"),
+				    Data = Source{[Schema = "dbo", Item = "vw_dim_seller"]}[Data]
+				in
+				    Data
+

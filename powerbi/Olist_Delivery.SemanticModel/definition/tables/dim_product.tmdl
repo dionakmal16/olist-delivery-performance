@@ -1,0 +1,42 @@
+/// Produk dengan kategori (Inggris), berat, dan kelas berat.
+table dim_product
+	lineageTag: c1890937-e3a9-44c1-aca8-80d458603fe5
+
+	column product_id
+		dataType: string
+		lineageTag: a42f9036-b951-4be4-8644-bfe583c7f85e
+		sourceColumn: product_id
+
+	column category
+		dataType: string
+		lineageTag: ee8ba354-e2ac-478d-b20b-3266f0c15066
+		sourceColumn: category
+
+	column product_weight_g
+		dataType: int64
+		lineageTag: abf16f82-9769-4114-8b23-cdca68ed91e1
+		summarizeBy: none
+		sourceColumn: product_weight_g
+
+	column product_volume_cm3
+		dataType: int64
+		lineageTag: e0d61adf-4c3e-428b-93ec-52876e49e1f1
+		summarizeBy: none
+		sourceColumn: product_volume_cm3
+
+	column weight_class
+		dataType: string
+		lineageTag: 89fd7b30-f74c-4eee-bd6b-1909edbe4f83
+		sourceColumn: weight_class
+
+	partition dim_product = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(".\SQLEXPRESS", "OlistDB"),
+				    Data = Source{[Schema = "dbo", Item = "vw_dim_product"]}[Data]
+				in
+				    Data
+
+	annotation PBI_ResultType = Table
+
